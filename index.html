@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tempo Dashboard - Web3 Dashboard for Tempo Testnet</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Hero Icons -->
+    <script src="https://unpkg.com/@heroicons/react@2.0.18/outline/index.js"></script>
+    <!-- Ethers.js -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
+    <!-- Toastify for notifications -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+      * {
+        font-family: 'Inter', sans-serif;
+      }
+      .dark-mode {
+        background-color: #0f172a;
+        color: #f8fafc;
+      }
+      .gradient-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      .skeleton {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+      }
+      .dark-mode .skeleton {
+        background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+      }
+      @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .dark-mode .glass-card {
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .token-card {
+        transition: all 0.3s ease;
+      }
+      .token-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+      }
+      .pulse {
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+      }
+      .cooldown-progress {
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        background: #e2e8f0;
+      }
+      .dark-mode .cooldown-progress {
+        background: #334155;
+      }
+      .cooldown-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #3b82f6);
+        transition: width 1s linear;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div id="root" class="min-h-screen">
+      <!-- Navigation Bar -->
+      <nav class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex justify-between h-16">
+            <div class="flex items-center">
+              <div class="flex-shrink-0 flex items-center">
+                <div class="h-10 w-10 rounded-full gradient-bg flex items-center justify-center">
+                  <span class="text-white font-bold text-lg">⏱️</span>
+                </div>
+                <span class="ml-3 text-xl font-bold text-gray-800 dark:text-white">Tempo Dashboard</span>
+                <span class="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">Testnet</span>
+              </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+              <!-- Network Indicator -->
+              <div id="networkIndicator" class="hidden items-center px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                <span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>
+                <span class="text-sm font-medium">Wrong Network</span>
+              </div>
+              
+              <!-- Dark Mode Toggle -->
+              <button id="darkModeToggle" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                <i class="fas fa-moon"></i>
+              </button>
+              
+              <!-- Wallet Connection -->
+              <button id="connectWalletBtn" class="px-4 py-2 gradient-bg text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center">
+                <i class="fas fa-wallet mr-2"></i>
+                Connect Wallet
+              </button>
+              
+              <!-- Connected Wallet Info -->
+              <div id="walletInfo" class="hidden items-center space-x-3">
+                <div class="text-right">
+                  <div class="text-sm text-gray-600 dark:text-gray-300">Balance</div>
+                  <div id="walletBalance" class="font-bold text-gray-800 dark:text-white">0 TEMPO</div>
+                </div>
+                <div class="relative">
+                  <div id="walletAddress" class="px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg font-mono text-sm truncate max-w-[120px]">0x1234...5678</div>
+                  <button id="disconnectWalletBtn" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600">×</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Web3 Dashboard</h1>
+          <p class="text-gray-600 dark:text-gray-300">Monitor and manage your tokens on Tempo Testnet</p>
+        </div>
+
+        <!-- Alert Banner -->
+        <div id="alertBanner" class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hidden">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <i class="fas fa-info-circle text-blue-400"></i>
+            </div>
+            <div class="ml-3 flex-1">
+              <p id="alertMessage" class="text-sm text-blue-800 dark:text-blue-200"></p>
+            </div>
+            <button id="closeAlertBtn" class="ml-auto pl-3">
+              <i class="fas fa-times text-blue-400"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <!-- Left Column: Token Scanner & Portfolio -->
+          <div class="lg:col-span-2 space-y-8">
+            <!-- Token Scanner Card -->
+            <div class="glass-card rounded-xl p-6 shadow-lg">
+              <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+                  <i class="fas fa-search mr-3 text-blue-500"></i>
+                  Token Scanner
+                </h2>
+                <div class="flex items-center space-x-2">
+                  <button id="refreshBalancesBtn" class="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                  <div class="relative" id="autoRefreshContainer">
+                    <button id="toggleAutoRefreshBtn" class="px-3 py-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition-colors">
+                      <i class="fas fa-clock"></i>
+                    </button>
+                    <span id="autoRefreshBadge" class="absolute -top-1 -right-1 w-5 h-5 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">10</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Enter ERC20 Token Contract Address
+                </label>
+                <div class="flex space-x-2">
+                  <input 
+                    id="tokenAddressInput" 
+                    type="text" 
+                    placeholder="0x..." 
+                    class="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  />
+                  <button id="scanTokenBtn" class="px-6 py-3 gradient-bg text-white rounded-lg font-medium hover:opacity-90 transition-opacity">
+                    Scan Token
+                  </button>
+                </div>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  Enter a valid ERC20 contract address on Tempo Testnet
+                </p>
+              </div>
+
+              <!-- Token Scanner Results -->
+              <div id="tokenScannerResults" class="hidden">
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+                  <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Token Details</h3>
+                    <button id="addToPortfolioBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                      <i class="fas fa-plus mr-2"></i>
+                      Add to Portfolio
+                    </button>
+                  </div>
+                  
+                  <div id="tokenDetails" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Token details will be populated here -->
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Portfolio Section -->
+            <div class="glass-card rounded-xl p-6 shadow-lg">
+              <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+                  <i class="fas fa-coins mr-3 text-yellow-500"></i>
+                  Token Portfolio
+                  <span id="tokenCountBadge" class="ml-3 px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">0 tokens</span>
+                </h2>
+                <div class="flex items-center space-x-2">
+                  <button id="clearPortfolioBtn" class="px-4 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors">
+                    Clear All
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Portfolio Table -->
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead>
+                    <tr>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Token</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Balance</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Value</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="portfolioTableBody" class="divide-y divide-gray-200 dark:divide-gray-700">
+                    <!-- Portfolio rows will be populated here -->
+                    <tr id="emptyPortfolioMessage">
+                      <td colspan="4" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-coins text-4xl mb-4 opacity-20"></i>
+                        <p class="text-lg">No tokens in portfolio</p>
+                        <p class="text-sm mt-2">Scan and add tokens to get started</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- Portfolio Cards (Mobile) -->
+              <div id="portfolioCards" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <!-- Token cards will be populated here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Faucet & Network Info -->
+          <div class="space-y-8">
+            <!-- Network Info Card -->
+            <div class="glass-card rounded-xl p-6 shadow-lg">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                <i class="fas fa-network-wired mr-3 text-green-500"></i>
+                Network Information
+              </h2>
+              
+              <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600 dark:text-gray-300">Network</span>
+                  <span id="networkName" class="font-mono font-bold text-green-600 dark:text-green-400">Tempo Testnet</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600 dark:text-gray-300">Chain ID</span>
+                  <span id="chainId" class="font-mono">98989</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600 dark:text-gray-300">RPC URL</span>
+                  <span id="rpcUrl" class="font-mono text-sm truncate max-w-[150px]">https://rpc.testnet.tempo.xyz</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600 dark:text-gray-300">Block Explorer</span>
+                  <a href="https://explorer.testnet.tempo.xyz" target="_blank" class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300">
+                    <i class="fas fa-external-link-alt"></i>
+                  </a>
+                </div>
+              </div>
+              
+              <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <button id="addNetworkBtn" class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center">
+                  <i class="fas fa-plus-circle mr-2"></i>
+                  Add Tempo to Wallet
+                </button>
+              </div>
+            </div>
+
+            <!-- Faucet Card -->
+            <div class="glass-card rounded-xl p-6 shadow-lg">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                <i class="fas fa-faucet mr-3 text-purple-500"></i>
+                Test Token Faucet
+              </h2>
+              
+              <div class="space-y-4 mb-6">
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600 dark:text-gray-300">Faucet Balance</span>
+                  <span id="faucetBalance" class="font-bold text-lg text-purple-600 dark:text-purple-400">Loading...</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600 dark:text-gray-300">Claim Amount</span>
+                  <span class="font-bold">100 TEMPO</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600 dark:text-gray-300">Cooldown</span>
+                  <span id="cooldownTime" class="font-bold">24 hours</span>
+                </div>
+                
+                <!-- Cooldown Progress -->
+                <div id="cooldownContainer" class="hidden">
+                  <div class="flex justify-between text-sm text-gray-600 dark:text-gray-300 mb-1">
+                    <span>Next claim available in:</span>
+                    <span id="cooldownRemaining">23:59:59</span>
+                  </div>
+                  <div class="cooldown-progress">
+                    <div id="cooldownProgressFill" class="cooldown-progress-fill"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="space-y-3">
+                <button id="claimTokensBtn" class="w-full px-4 py-3 gradient-bg text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                  <i class="fas fa-tint mr-2"></i>
+                  Claim Test Tokens
+                </button>
+                
+                <!-- Admin Section -->
+                <div id="adminSection" class="hidden pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h3 class="font-bold text-gray-900 dark:text-white mb-3">Admin Functions</h3>
+                  <div class="space-y-3">
+                    <div class="flex space-x-2">
+                      <input 
+                        id="refillAmountInput" 
+                        type="number" 
+                        placeholder="Amount" 
+                        class="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                      <button id="refillFaucetBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                        Refill
+                      </button>
+                    </div>
+                    <button id="withdrawFaucetBtn" class="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                      Withdraw Funds
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Favorite Tokens -->
+            <div class="glass-card rounded-xl p-6 shadow-lg">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                <i class="fas fa-star mr-3 text-yellow-500"></i>
+                Favorite Tokens
+              </h2>
+              
+              <div id="favoriteTokensList" class="space-y-3">
+                <!-- Favorite tokens will be populated here -->
+                <div id="emptyFavoritesMessage" class="text-center py-4 text-gray-500 dark:text-gray-400">
+                  <i class="fas fa-star text-2xl mb-2 opacity-20"></i>
+                  <p>No favorite tokens</p>
+                  <p class="text-sm mt-1">Mark tokens as favorite in your portfolio</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Loading Overlay -->
+      <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
+          <div class="text-center">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full gradient-bg flex items-center justify-center">
+              <i class="fas fa-spinner fa-spin text-white text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2" id="loadingTitle">Processing Transaction</h3>
+            <p class="text-gray-600 dark:text-gray-300 mb-4" id="loadingMessage">Please wait while we process your request...</p>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div class="bg-blue-500 h-2 rounded-full w-1/2 pulse"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ============================================
+      // Configuration & Constants
+      // ============================================
+      
+      // Tempo Testnet Configuration
+      const TEMPO_TESTNET = {
+        chainId: '0x182DD', // 98989 in hexadecimal
+        chainName: 'Tempo Testnet',
+        nativeCurrency: {
+          name: 'Tempo',
+          symbol: 'TEMPO',
+          decimals: 18
+        },
+        rpcUrls: ['https://rpc.testnet.tempo.xyz'],
+        blockExplorerUrls: ['https://explorer.testnet.tempo.xyz']
+      };
+
+      // Faucet Contract Configuration (Example - replace with actual contract)
+      const FAUCET_CONFIG = {
+        address: '0x1234567890123456789012345678901234567890', // Replace with actual faucet contract
+        abi: [
+          'function claim() external',
+          'function faucetBalance() external view returns (uint256)',
+          'function lastClaim(address) external view returns (uint256)',
+          'function cooldown() external view returns (uint256)',
+          'function claimAmount() external view returns (uint256)',
+          'function refill(uint256 amount) external',
+          'function withdraw() external onlyOwner'
+        ]
+      };
+
+      // ERC20 Token ABI (minimal)
+      const ERC20_ABI = [
+        'function name() view returns (string)',
+        'function symbol() view returns (string)',
+        'function decimals() view returns (uint8)',
+        'function totalSupply() view returns (uint256)',
+        'function balanceOf(address) view returns (uint256)'
+      ];
+
+      // Token Logo Sources
+      const TOKEN_LOGO_SOURCES = [
+        'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/{address}/logo.png',
+        'https://tokens.1inch.io/{address}.png',
+        'https://assets.coingecko.com/coins/images/{id}/large/{symbol}.png'
+      ];
+
+      // Local Storage Keys
+      const STORAGE_KEYS = {
+        PORTFOLIO: 'tempo_dashboard_portfolio',
+        FAVORITES: 'tempo_dashboard_favorites',
+        DARK_MODE: 'tempo_dashboard_dark_mode',
+        LOGO_CACHE: 'tempo_dashboard_logo_cache'
+      };
+
+      // ============================================
+      // Global State
+      // ============================================
+      
+      let state = {
+        // Wallet state
+        provider: null,
+        signer: null,
+        account: null,
+        network: null,
+        balance: '0',
+        isConnected: false,
+        
+        // Token state
+        portfolio: [],
+        favorites: new Set(),
+        tokenLogos: new Map(),
+        
+        // Faucet state
+        faucetContract: null,
+        faucetBalance: '0',
+        claimAmount: '100',
+        cooldown: 86400, // 24 hours in seconds
+        lastClaim: 0,
+        cooldownTimer: null,
+        
+        // UI state
+        autoRefresh: true,
+        refreshInterval: null,
+        darkMode: false,
+        isLoading: false
+      };
+
+      // ============================================
+      // DOM Elements
+      // ============================================
+      
+      const elements = {
+        // Wallet elements
+        connectWalletBtn: document.getElementById('connectWalletBtn'),
+        disconnectWalletBtn: document.getElementById('disconnectWalletBtn'),
+        walletInfo: document.getElementById('walletInfo'),
+        walletAddress: document.getElementById('walletAddress'),
+        walletBalance: document.getElementById('walletBalance'),
+        networkIndicator: document.getElementById('networkIndicator'),
+        
+        // Token scanner elements
+        tokenAddressInput: document.getElementById('tokenAddressInput'),
+        scanTokenBtn: document.getElementById('scanTokenBtn'),
+        tokenScannerResults: document.getElementById('tokenScannerResults'),
+        tokenDetails: document.getElementById('tokenDetails'),
+        addToPortfolioBtn: document.getElementById('addToPortfolioBtn'),
+        
+        // Portfolio elements
+        portfolioTableBody: document.getElementById('portfolioTableBody'),
+        portfolioCards: document.getElementById('portfolioCards'),
+        emptyPortfolioMessage: document.getElementById('emptyPortfolioMessage'),
+        tokenCountBadge: document.getElementById('tokenCountBadge'),
+        clearPortfolioBtn: document.getElementById('clearPortfolioBtn'),
+        
+        // Refresh elements
+        refreshBalancesBtn: document.getElementById('refreshBalancesBtn'),
+        toggleAutoRefreshBtn: document.getElementById('toggleAutoRefreshBtn'),
+        autoRefreshBadge: document.getElementById('autoRefreshBadge'),
+        autoRefreshContainer: document.getElementById('autoRefreshContainer'),
+        
+        // Faucet elements
+        claimTokensBtn: document.getElementById('claimTokensBtn'),
+        faucetBalance: document.getElementById('faucetBalance'),
+        cooldownTime: document.getElementById('cooldownTime'),
+        cooldownContainer: document.getElementById('cooldownContainer'),
+        cooldownRemaining: document.getElementById('cooldownRemaining'),
+        cooldownProgressFill: document.getElementById('cooldownProgressFill'),
+        adminSection: document.getElementById('adminSection'),
+        refillAmountInput: document.getElementById('refillAmountInput'),
+        refillFaucetBtn: document.getElementById('refillFaucetBtn'),
+        withdrawFaucetBtn: document.getElementById('withdrawFaucetBtn'),
+        
+        // Network elements
+        networkName: document.getElementById('networkName'),
+        chainId: document.getElementById('chainId'),
+        rpcUrl: document.getElementById('rpcUrl'),
+        addNetworkBtn: document.getElementById('addNetworkBtn'),
+        
+        // Favorite elements
+        favoriteTokensList: document.getElementById('favoriteTokensList'),
+        emptyFavoritesMessage: document.getElementById('emptyFavoritesMessage'),
+        
+        // UI elements
+        darkModeToggle: document.getElementById('darkModeToggle'),
+        loadingOverlay: document.getElementById('loadingOverlay'),
+        loadingTitle: document.getElementById('loadingTitle'),
+        loadingMessage: document.getElementById('loadingMessage'),
+        alertBanner: document.getElementById('alertBanner'),
+        alertMessage: document.getElementById('alertMessage'),
+        closeAlertBtn: document.getElementById('closeAlertBtn')
+      };
+
+      // ============================================
+      // Utility Functions
+      // ============================================
+      
+      function showAlert(message, type = 'info') {
+        const colors = {
+          info: 'blue',
+          success: 'green',
+          warning: 'yellow',
+          error: 'red'
+        };
+        
+        elements.alertBanner.className = elements.alertBanner.className.replace(/bg-\w+-\d+/g, '');
+        elements.alertBanner.classList.add(`bg-${colors[type]}-50`, `dark:bg-${colors[type]}-900/30`, `border-${colors[type]}-200`, `dark:border-${colors[type]}-800`);
+        
+        elements.alertMessage.textContent = message;
+        elements.alertBanner.classList.remove('hidden');
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+          hideAlert();
+        }, 5000);
+      }
+      
+      function hideAlert() {
+        elements.alertBanner.classList.add('hidden');
+      }
+      
+      function showLoading(title = 'Loading', message = 'Please wait...') {
+        state.isLoading = true;
+        elements.loadingTitle.textContent = title;
+        elements.loadingMessage.textContent = message;
+        elements.loadingOverlay.classList.remove('hidden');
+      }
+      
+      function hideLoading() {
+        state.isLoading = false;
+        elements.loadingOverlay.classList.add('hidden');
+      }
+      
+      function showToast(message, type = 'info') {
+        const backgroundColor = type === 'success' ? '#10B981' : 
+                               type === 'error' ? '#EF4444' : 
+                               type === 'warning' ? '#F59E0B' : '#3B82F6';
+        
+        Toastify({
+          text: message,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: backgroundColor,
+          stopOnFocus: true,
+        }).showToast();
+      }
+      
+      function formatAddress(address) {
+        if (!address) return '';
+        return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+      }
+      
+      function formatBalance(balance, decimals = 18) {
+        if (!balance) return '0';
+        const formatted = ethers.utils.formatUnits(balance, decimals);
+        const num = parseFloat(formatted);
+        return num.toFixed(num < 1 ? 6 : 2);
+      }
+      
+      function formatNumber(num) {
+        if (!num) return '0';
+        if (num < 1) return num.toFixed(6);
+        if (num < 1000) return num.toFixed(2);
+        if (num < 1000000) return (num / 1000).toFixed(1) + 'K';
+        return (num / 1000000).toFixed(1) + 'M';
+      }
+      
+      function validateAddress(address) {
+        return ethers.utils.isAddress(address);
+      }
+      
+      function isDuplicateToken(address) {
+        return state.portfolio.some(token => token.address.toLowerCase() === address.toLowerCase());
+      }
+      
+      // ============================================
+      // Local Storage Management
+      // ============================================
+      
+      function savePortfolio() {
+        localStorage.setItem(STORAGE_KEYS.PORTFOLIO, JSON.stringify(state.portfolio));
+      }
+      
+      function loadPortfolio() {
+        const saved = localStorage.getItem(STORAGE_KEYS.PORTFOLIO);
+        if (saved) {
+          state.portfolio = JSON.parse(saved);
+          updatePortfolioDisplay();
+        }
+      }
+      
+      function saveFavorites() {
+        localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify([...state.favorites]));
+      }
+      
+      function loadFavorites() {
+        const saved = localStorage.getItem(STORAGE_KEYS.FAVORITES);
+        if (saved) {
+          state.favorites = new Set(JSON.parse(saved));
+        }
+      }
+      
+      function saveLogoCache() {
+        const cache = Object.fromEntries(state.tokenLogos);
+        localStorage.setItem(STORAGE_KEYS.LOGO_CACHE, JSON.stringify(cache));
+      }
+      
+      function loadLogoCache() {
+        const saved = localStorage.getItem(STORAGE_KEYS.LOGO_CACHE);
+        if (saved) {
+          const cache = JSON.parse(saved);
+          state.tokenLogos = new Map(Object.entries(cache));
+        }
+      }
+      
+      function saveDarkMode() {
+        localStorage.setItem(STORAGE_KEYS.DARK_MODE, state.darkMode.toString());
+      }
+      
+      function loadDarkMode() {
+        const saved = localStorage.getItem(STORAGE_KEYS.DARK_MODE);
+        if (saved !== null) {
+          state.darkMode = saved === 'true';
+          updateDarkMode();
+        }
+      }
+
+      // ============================================
+      // Wallet Connection
+      // ============================================
+      
+      async function connectWallet() {
+        try {
+          showLoading('Connecting Wallet', 'Please approve the connection in your wallet');
+          
+          // Check if MetaMask is installed
+          if (typeof window.ethereum === 'undefined') {
+            throw new Error('Please install MetaMask or use a Web3-enabled browser');
+          }
+          
+          // Create provider
+          state.provider = new ethers.providers.Web3Provider(window.ethereum);
+          
+          // Request account access
+          const accounts = await window.ethereum.request({ 
+            method: 'eth_requestAccounts' 
+          });
+          
+          state.account = accounts[0];
+          state.signer = state.provider.getSigner();
+          
+          // Get network
+          const network = await state.provider.getNetwork();
+          state.network = network;
+          
+          // Check if we're on Tempo Testnet
+          if (network.chainId.toString() !== TEMPO_TESTNET.chainId) {
+            elements.networkIndicator.classList.remove('hidden');
+            await switchToTempoNetwork();
+          } else {
+            elements.networkIndicator.classList.add('hidden');
+          }
+          
+          // Update wallet UI
+          updateWalletUI();
+          
+          // Load balances
+          await updateWalletBalance();
+          
+          // Initialize faucet
+          await initializeFaucet();
+          
+          // Load portfolio
+          loadPortfolio();
+          loadFavorites();
+          
+          // Start auto-refresh
+          startAutoRefresh();
+          
+          showToast('Wallet connected successfully!', 'success');
+          
+        } catch (error) {
+          console.error('Wallet connection error:', error);
+          showToast(`Connection failed: ${error.message}`, 'error');
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      async function disconnectWallet() {
+        // Stop auto-refresh
+        stopAutoRefresh();
+        
+        // Clear state
+        state.provider = null;
+        state.signer = null;
+        state.account = null;
+        state.isConnected = false;
+        
+        // Update UI
+        elements.connectWalletBtn.classList.remove('hidden');
+        elements.walletInfo.classList.add('hidden');
+        elements.networkIndicator.classList.add('hidden');
+        
+        showToast('Wallet disconnected', 'info');
+      }
+      
+      async function switchToTempoNetwork() {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: TEMPO_TESTNET.chainId }],
+          });
+          elements.networkIndicator.classList.add('hidden');
+          showToast('Switched to Tempo Testnet', 'success');
+        } catch (switchError) {
+          // If network doesn't exist in wallet, add it
+          if (switchError.code === 4902) {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [TEMPO_TESTNET],
+              });
+              elements.networkIndicator.classList.add('hidden');
+              showToast('Tempo Testnet added to wallet', 'success');
+            } catch (addError) {
+              console.error('Error adding network:', addError);
+              showToast('Please add Tempo Testnet manually', 'warning');
+            }
+          } else {
+            console.error('Error switching network:', switchError);
+            showToast('Please switch to Tempo Testnet manually', 'warning');
+          }
+        }
+      }
+      
+      async function updateWalletBalance() {
+        if (!state.account || !state.provider) return;
+        
+        try {
+          const balance = await state.provider.getBalance(state.account);
+          state.balance = balance;
+          elements.walletBalance.textContent = `${formatBalance(balance)} TEMPO`;
+        } catch (error) {
+          console.error('Error updating wallet balance:', error);
+        }
+      }
+      
+      function updateWalletUI() {
+        if (state.account) {
+          elements.connectWalletBtn.classList.add('hidden');
+          elements.walletInfo.classList.remove('hidden');
+          elements.walletAddress.textContent = formatAddress(state.account);
+        } else {
+          elements.connectWalletBtn.classList.remove('hidden');
+          elements.walletInfo.classList.add('hidden');
+        }
+      }
+
+      // ============================================
+      // Token Scanner
+      // ============================================
+      
+      async function scanToken() {
+        const address = elements.tokenAddressInput.value.trim();
+        
+        if (!address) {
+          showAlert('Please enter a token contract address', 'warning');
+          return;
+        }
+        
+        if (!validateAddress(address)) {
+          showAlert('Invalid Ethereum address format', 'error');
+          return;
+        }
+        
+        if (!state.provider) {
+          showAlert('Please connect your wallet first', 'warning');
+          return;
+        }
+        
+        try {
+          showLoading('Scanning Token', 'Fetching token details...');
+          
+          const tokenContract = new ethers.Contract(address, ERC20_ABI, state.provider);
+          
+          // Fetch token details
+          const [name, symbol, decimals, totalSupply] = await Promise.all([
+            tokenContract.name().catch(() => 'Unknown Token'),
+            tokenContract.symbol().catch(() => 'UNKNOWN'),
+            tokenContract.decimals().catch(() => 18),
+            tokenContract.totalSupply().catch(() => '0')
+          ]);
+          
+          // Fetch wallet balance
+          let balance = '0';
+          if (state.account) {
+            balance = await tokenContract.balanceOf(state.account).catch(() => '0');
+          }
+          
+          // Fetch token logo
+          const logo = await fetchTokenLogo(address, symbol);
+          
+          // Display token details
+          displayTokenDetails({
+            address,
+            name,
+            symbol,
+            decimals,
+            totalSupply,
+            balance,
+            logo
+          });
+          
+          elements.tokenScannerResults.classList.remove('hidden');
+          
+          // Enable/disable add button based on duplicate
+          elements.addToPortfolioBtn.disabled = isDuplicateToken(address);
+          elements.addToPortfolioBtn.textContent = isDuplicateToken(address) ? 'Already in Portfolio' : 'Add to Portfolio';
+          
+          showToast('Token scanned successfully!', 'success');
+          
+        } catch (error) {
+          console.error('Token scan error:', error);
+          showAlert('Failed to scan token. Please check the contract address.', 'error');
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      async function fetchTokenLogo(address, symbol) {
+        // Check cache first
+        if (state.tokenLogos.has(address)) {
+          return state.tokenLogos.get(address);
+        }
+        
+        // Try multiple sources
+        const sources = [
+          `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/${address}/logo.png`,
+          `https://tokens.1inch.io/${address}.png`,
+          `https://cryptoicons.org/api/icon/${symbol.toLowerCase()}/200`
+        ];
+        
+        for (const src of sources) {
+          try {
+            const response = await fetch(src, { mode: 'no-cors' });
+            if (response.ok || response.type === 'opaque') {
+              state.tokenLogos.set(address, src);
+              saveLogoCache();
+              return src;
+            }
+          } catch (error) {
+            // Continue to next source
+          }
+        }
+        
+        // Fallback to generated avatar
+        const fallback = `https://ui-avatars.com/api/?name=${symbol}&background=random&color=fff&size=128`;
+        state.tokenLogos.set(address, fallback);
+        saveLogoCache();
+        return fallback;
+      }
+      
+      function displayTokenDetails(token) {
+        elements.tokenDetails.innerHTML = `
+          <div class="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <img src="${token.logo}" alt="${token.symbol}" class="w-12 h-12 rounded-full" onerror="this.src='https://ui-avatars.com/api/?name=${token.symbol}&background=random&color=fff&size=128'">
+            <div>
+              <h4 class="font-bold text-gray-900 dark:text-white">${token.name}</h4>
+              <p class="text-gray-600 dark:text-gray-300">${token.symbol}</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400 font-mono">${formatAddress(token.address)}</p>
+            </div>
+          </div>
+          
+          <div class="space-y-4">
+            <div class="flex justify-between">
+              <span class="text-gray-600 dark:text-gray-300">Decimals</span>
+              <span class="font-bold">${token.decimals}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600 dark:text-gray-300">Total Supply</span>
+              <span class="font-bold">${formatNumber(ethers.utils.formatUnits(token.totalSupply, token.decimals))}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600 dark:text-gray-300">Your Balance</span>
+              <span class="font-bold text-lg text-green-600 dark:text-green-400">
+                ${formatBalance(token.balance, token.decimals)} ${token.symbol}
+              </span>
+            </div>
+          </div>
+        `;
+      }
+      
+      function addTokenToPortfolio(tokenData) {
+        if (isDuplicateToken(tokenData.address)) {
+          showToast('Token already in portfolio', 'warning');
+          return;
+        }
+        
+        const token = {
+          ...tokenData,
+          id: Date.now().toString(),
+          isFavorite: state.favorites.has(tokenData.address.toLowerCase())
+        };
+        
+        state.portfolio.push(token);
+        savePortfolio();
+        updatePortfolioDisplay();
+        showToast('Token added to portfolio', 'success');
+      }
+      
+      // ============================================
+      // Portfolio Management
+      // ============================================
+      
+      function updatePortfolioDisplay() {
+        updatePortfolioTable();
+        updatePortfolioCards();
+        updateFavoriteTokens();
+        updateTokenCount();
+      }
+      
+      function updatePortfolioTable() {
+        const tableBody = elements.portfolioTableBody;
+        const emptyMessage = elements.emptyPortfolioMessage;
+        
+        if (state.portfolio.length === 0) {
+          emptyMessage.classList.remove('hidden');
+          tableBody.innerHTML = '';
+          tableBody.appendChild(emptyMessage);
+          return;
+        }
+        
+        emptyMessage.classList.add('hidden');
+        
+        // Sort: favorites first, then by balance
+        const sortedPortfolio = [...state.portfolio].sort((a, b) => {
+          if (a.isFavorite !== b.isFavorite) return b.isFavorite ? 1 : -1;
+          const balanceA = parseFloat(ethers.utils.formatUnits(a.balance || '0', a.decimals));
+          const balanceB = parseFloat(ethers.utils.formatUnits(b.balance || '0', b.decimals));
+          return balanceB - balanceA;
+        });
+        
+        tableBody.innerHTML = sortedPortfolio.map(token => `
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+            <td class="px-4 py-4 whitespace-nowrap">
+              <div class="flex items-center">
+                <div class="flex-shrink-0 h-10 w-10 relative">
+                  <img class="h-10 w-10 rounded-full" src="${token.logo}" alt="${token.symbol}" onerror="this.src='https://ui-avatars.com/api/?name=${token.symbol}&background=random&color=fff&size=128'">
+                  ${token.isFavorite ? '<div class="absolute -top-1 -right-1 text-yellow-500"><i class="fas fa-star text-xs"></i></div>' : ''}
+                </div>
+                <div class="ml-4">
+                  <div class="text-sm font-medium text-gray-900 dark:text-white">${token.name}</div>
+                  <div class="text-sm text-gray-500 dark:text-gray-400">${token.symbol}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-900 dark:text-white font-bold">
+                ${formatBalance(token.balance, token.decimals)}
+              </div>
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-900 dark:text-white">
+                ${formatNumber(ethers.utils.formatUnits(token.balance || '0', token.decimals))} ${token.symbol}
+              </div>
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+              <div class="flex items-center space-x-2">
+                <button onclick="refreshTokenBalance('${token.id}')" class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+                <button onclick="toggleFavorite('${token.address}')" class="${token.isFavorite ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-600">
+                  <i class="fas fa-star"></i>
+                </button>
+                <button onclick="removeToken('${token.id}')" class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      }
+      
+      function updatePortfolioCards() {
+        const portfolioCards = elements.portfolioCards;
+        
+        if (state.portfolio.length === 0) {
+          portfolioCards.innerHTML = '';
+          return;
+        }
+        
+        portfolioCards.innerHTML = state.portfolio.map(token => `
+          <div class="token-card bg-white dark:bg-gray-800 rounded-xl p-4 shadow border border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center">
+                <div class="relative">
+                  <img class="h-10 w-10 rounded-full" src="${token.logo}" alt="${token.symbol}" onerror="this.src='https://ui-avatars.com/api/?name=${token.symbol}&background=random&color=fff&size=128'">
+                  ${token.isFavorite ? '<div class="absolute -top-1 -right-1 text-yellow-500"><i class="fas fa-star text-xs"></i></div>' : ''}
+                </div>
+                <div class="ml-3">
+                  <h4 class="font-bold text-gray-900 dark:text-white">${token.symbol}</h4>
+                  <p class="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[120px]">${token.name}</p>
+                </div>
+              </div>
+              <div class="flex items-center space-x-1">
+                <button onclick="toggleFavorite('${token.address}')" class="p-1 ${token.isFavorite ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-600">
+                  <i class="fas fa-star"></i>
+                </button>
+                <button onclick="removeToken('${token.id}')" class="p-1 text-red-500 hover:text-red-700">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div class="mb-4">
+              <div class="text-sm text-gray-600 dark:text-gray-300 mb-1">Balance</div>
+              <div class="text-2xl font-bold text-gray-900 dark:text-white">
+                ${formatBalance(token.balance, token.decimals)}
+              </div>
+              <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                ${formatNumber(ethers.utils.formatUnits(token.balance || '0', token.decimals))} ${token.symbol}
+              </div>
+            </div>
+            
+            <div class="flex justify-between">
+              <button onclick="refreshTokenBalance('${token.id}')" class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200 dark:hover:bg-blue-800">
+                <i class="fas fa-sync-alt mr-1"></i> Refresh
+              </button>
+              <div class="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                ${formatAddress(token.address)}
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+      
+      function updateFavoriteTokens() {
+        const favoriteTokensList = elements.favoriteTokensList;
+        const emptyMessage = elements.emptyFavoritesMessage;
+        
+        const favoriteTokens = state.portfolio.filter(token => token.isFavorite);
+        
+        if (favoriteTokens.length === 0) {
+          emptyMessage.classList.remove('hidden');
+          favoriteTokensList.innerHTML = '';
+          favoriteTokensList.appendChild(emptyMessage);
+          return;
+        }
+        
+        emptyMessage.classList.add('hidden');
+        
+        favoriteTokensList.innerHTML = favoriteTokens.map(token => `
+          <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div class="flex items-center">
+              <img class="h-8 w-8 rounded-full mr-3" src="${token.logo}" alt="${token.symbol}" onerror="this.src='https://ui-avatars.com/api/?name=${token.symbol}&background=random&color=fff&size=128'">
+              <div>
+                <div class="font-medium text-gray-900 dark:text-white">${token.symbol}</div>
+                <div class="text-sm text-gray-600 dark:text-gray-300">${formatBalance(token.balance, token.decimals)}</div>
+              </div>
+            </div>
+            <button onclick="removeToken('${token.id}')" class="text-gray-400 hover:text-red-500">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        `).join('');
+      }
+      
+      function updateTokenCount() {
+        elements.tokenCountBadge.textContent = `${state.portfolio.length} token${state.portfolio.length !== 1 ? 's' : ''}`;
+      }
+      
+      async function refreshTokenBalance(tokenId) {
+        const tokenIndex = state.portfolio.findIndex(t => t.id === tokenId);
+        if (tokenIndex === -1) return;
+        
+        const token = state.portfolio[tokenIndex];
+        
+        try {
+          const tokenContract = new ethers.Contract(token.address, ERC20_ABI, state.provider);
+          const balance = await tokenContract.balanceOf(state.account);
+          
+          state.portfolio[tokenIndex].balance = balance;
+          savePortfolio();
+          updatePortfolioDisplay();
+          
+          showToast(`${token.symbol} balance updated`, 'success');
+        } catch (error) {
+          console.error('Error refreshing balance:', error);
+          showToast(`Failed to refresh ${token.symbol} balance`, 'error');
+        }
+      }
+      
+      async function refreshAllBalances() {
+        if (!state.account || !state.provider || state.portfolio.length === 0) {
+          showToast('No tokens to refresh', 'info');
+          return;
+        }
+        
+        showLoading('Refreshing Balances', 'Updating token balances...');
+        
+        try {
+          for (const token of state.portfolio) {
+            try {
+              const tokenContract = new ethers.Contract(token.address, ERC20_ABI, state.provider);
+              const balance = await tokenContract.balanceOf(state.account);
+              token.balance = balance;
+            } catch (error) {
+              console.error(`Error refreshing ${token.symbol}:`, error);
+            }
+          }
+          
+          savePortfolio();
+          updatePortfolioDisplay();
+          await updateWalletBalance();
+          
+          showToast('All balances refreshed successfully!', 'success');
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      function toggleFavorite(tokenAddress) {
+        const address = tokenAddress.toLowerCase();
+        
+        if (state.favorites.has(address)) {
+          state.favorites.delete(address);
+        } else {
+          state.favorites.add(address);
+        }
+        
+        // Update portfolio tokens
+        state.portfolio.forEach(token => {
+          if (token.address.toLowerCase() === address) {
+            token.isFavorite = state.favorites.has(address);
+          }
+        });
+        
+        saveFavorites();
+        savePortfolio();
+        updatePortfolioDisplay();
+      }
+      
+      function removeToken(tokenId) {
+        state.portfolio = state.portfolio.filter(token => token.id !== tokenId);
+        savePortfolio();
+        updatePortfolioDisplay();
+        showToast('Token removed from portfolio', 'info');
+      }
+      
+      function clearPortfolio() {
+        if (state.portfolio.length === 0) return;
+        
+        if (confirm('Are you sure you want to clear your entire portfolio?')) {
+          state.portfolio = [];
+          savePortfolio();
+          updatePortfolioDisplay();
+          showToast('Portfolio cleared', 'info');
+        }
+      }
+
+      // ============================================
+      // Auto Refresh System
+      // ============================================
+      
+      function startAutoRefresh() {
+        if (!state.autoRefresh) return;
+        
+        stopAutoRefresh(); // Clear any existing interval
+        
+        let seconds = 10;
+        elements.autoRefreshBadge.textContent = seconds;
+        
+        state.refreshInterval = setInterval(async () => {
+          seconds--;
+          elements.autoRefreshBadge.textContent = seconds;
+          
+          if (seconds <= 0) {
+            await refreshAllBalances();
+            seconds = 10;
+            elements.autoRefreshBadge.textContent = seconds;
+          }
+        }, 1000);
+      }
+      
+      function stopAutoRefresh() {
+        if (state.refreshInterval) {
+          clearInterval(state.refreshInterval);
+          state.refreshInterval = null;
+        }
+      }
+      
+      function toggleAutoRefresh() {
+        state.autoRefresh = !state.autoRefresh;
+        
+        if (state.autoRefresh) {
+          startAutoRefresh();
+          elements.toggleAutoRefreshBtn.classList.remove('bg-gray-100', 'dark:bg-gray-800');
+          elements.toggleAutoRefreshBtn.classList.add('bg-green-100', 'dark:bg-green-900', 'text-green-700', 'dark:text-green-300');
+          showToast('Auto-refresh enabled', 'success');
+        } else {
+          stopAutoRefresh();
+          elements.toggleAutoRefreshBtn.classList.remove('bg-green-100', 'dark:bg-green-900', 'text-green-700', 'dark:text-green-300');
+          elements.toggleAutoRefreshBtn.classList.add('bg-gray-100', 'dark:bg-gray-800');
+          elements.autoRefreshBadge.textContent = '10';
+          showToast('Auto-refresh disabled', 'info');
+        }
+      }
+
+      // ============================================
+      // Faucet Functions
+      // ============================================
+      
+      async function initializeFaucet() {
+        if (!state.provider || !state.account) return;
+        
+        try {
+          // Create faucet contract instance
+          state.faucetContract = new ethers.Contract(
+            FAUCET_CONFIG.address,
+            FAUCET_CONFIG.abi,
+            state.signer
+          );
+          
+          // Load faucet data
+          await updateFaucetData();
+          
+          // Start cooldown timer
+          startCooldownTimer();
+          
+        } catch (error) {
+          console.error('Error initializing faucet:', error);
+        }
+      }
+      
+      async function updateFaucetData() {
+        if (!state.faucetContract) return;
+        
+        try {
+          // Fetch faucet balance
+          const faucetBalance = await state.faucetContract.faucetBalance();
+          state.faucetBalance = faucetBalance;
+          elements.faucetBalance.textContent = `${formatBalance(faucetBalance)} TEMPO`;
+          
+          // Fetch claim amount
+          const claimAmount = await state.faucetContract.claimAmount();
+          state.claimAmount = claimAmount;
+          
+          // Fetch cooldown
+          const cooldown = await state.faucetContract.cooldown();
+          state.cooldown = cooldown.toNumber();
+          elements.cooldownTime.textContent = `${state.cooldown / 3600} hours`;
+          
+          // Fetch last claim time
+          const lastClaim = await state.faucetContract.lastClaim(state.account);
+          state.lastClaim = lastClaim.toNumber();
+          
+          // Update claim button state
+          updateClaimButtonState();
+          
+        } catch (error) {
+          console.error('Error updating faucet data:', error);
+        }
+      }
+      
+      function updateClaimButtonState() {
+        const claimBtn = elements.claimTokensBtn;
+        const now = Math.floor(Date.now() / 1000);
+        const timeSinceLastClaim = now - state.lastClaim;
+        const cooldownRemaining = Math.max(0, state.cooldown - timeSinceLastClaim);
+        
+        if (cooldownRemaining > 0) {
+          claimBtn.disabled = true;
+          claimBtn.innerHTML = `<i class="fas fa-clock mr-2"></i> Claim (${formatTime(cooldownRemaining)})`;
+          elements.cooldownContainer.classList.remove('hidden');
+        } else {
+          claimBtn.disabled = false;
+          claimBtn.innerHTML = `<i class="fas fa-tint mr-2"></i> Claim Test Tokens`;
+          elements.cooldownContainer.classList.add('hidden');
+        }
+      }
+      
+      function formatTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      }
+      
+      function startCooldownTimer() {
+        if (state.cooldownTimer) {
+          clearInterval(state.cooldownTimer);
+        }
+        
+        state.cooldownTimer = setInterval(() => {
+          if (!state.lastClaim) return;
+          
+          const now = Math.floor(Date.now() / 1000);
+          const timeSinceLastClaim = now - state.lastClaim;
+          const cooldownRemaining = Math.max(0, state.cooldown - timeSinceLastClaim);
+          
+          if (cooldownRemaining > 0) {
+            const progress = ((state.cooldown - cooldownRemaining) / state.cooldown) * 100;
+            elements.cooldownProgressFill.style.width = `${progress}%`;
+            elements.cooldownRemaining.textContent = formatTime(cooldownRemaining);
+          } else {
+            elements.cooldownProgressFill.style.width = '100%';
+            updateClaimButtonState();
+          }
+        }, 1000);
+      }
+      
+      async function claimTokens() {
+        if (!state.faucetContract || !state.account) {
+          showAlert('Please connect your wallet first', 'warning');
+          return;
+        }
+        
+        try {
+          showLoading('Claiming Tokens', 'Please confirm the transaction in your wallet');
+          
+          const tx = await state.faucetContract.claim();
+          showToast('Transaction submitted! Waiting for confirmation...', 'info');
+          
+          await tx.wait();
+          
+          // Update data
+          await updateFaucetData();
+          await updateWalletBalance();
+          
+          showToast('Tokens claimed successfully!', 'success');
+          
+        } catch (error) {
+          console.error('Error claiming tokens:', error);
+          showToast(`Claim failed: ${error.message}`, 'error');
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      async function refillFaucet() {
+        if (!state.faucetContract) return;
+        
+        const amount = elements.refillAmountInput.value;
+        if (!amount || parseFloat(amount) <= 0) {
+          showAlert('Please enter a valid amount', 'warning');
+          return;
+        }
+        
+        try {
+          showLoading('Refilling Faucet', 'Processing refill transaction...');
+          
+          const amountWei = ethers.utils.parseUnits(amount, 18);
+          const tx = await state.faucetContract.refill(amountWei);
+          await tx.wait();
+          
+          await updateFaucetData();
+          showToast('Faucet refilled successfully!', 'success');
+          
+          elements.refillAmountInput.value = '';
+          
+        } catch (error) {
+          console.error('Error refilling faucet:', error);
+          showToast(`Refill failed: ${error.message}`, 'error');
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      async function withdrawFaucet() {
+        if (!state.faucetContract) return;
+        
+        if (!confirm('Are you sure you want to withdraw all faucet funds? This is an admin function.')) {
+          return;
+        }
+        
+        try {
+          showLoading('Withdrawing Funds', 'Processing withdrawal...');
+          
+          const tx = await state.faucetContract.withdraw();
+          await tx.wait();
+          
+          await updateFaucetData();
+          showToast('Funds withdrawn successfully!', 'success');
+          
+        } catch (error) {
+          console.error('Error withdrawing funds:', error);
+          showToast(`Withdrawal failed: ${error.message}`, 'error');
+        } finally {
+          hideLoading();
+        }
+      }
+
+      // ============================================
+      // UI Functions
+      // ============================================
+      
+      function updateDarkMode() {
+        if (state.darkMode) {
+          document.documentElement.classList.add('dark');
+          elements.darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+        } else {
+          document.documentElement.classList.remove('dark');
+          elements.darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+        }
+      }
+      
+      function toggleDarkMode() {
+        state.darkMode = !state.darkMode;
+        updateDarkMode();
+        saveDarkMode();
+      }
+      
+      function addTempoToWallet() {
+        if (typeof window.ethereum === 'undefined') {
+          showAlert('Please install MetaMask to add the network', 'warning');
+          return;
+        }
+        
+        window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [TEMPO_TESTNET],
+        }).then(() => {
+          showToast('Tempo Testnet added to wallet', 'success');
+        }).catch(error => {
+          console.error('Error adding network:', error);
+          showToast('Failed to add network', 'error');
+        });
+      }
+
+      // ============================================
+      // Event Listeners
+      // ============================================
+      
+      function initializeEventListeners() {
+        // Wallet events
+        elements.connectWalletBtn.addEventListener('click', connectWallet);
+        elements.disconnectWalletBtn.addEventListener('click', disconnectWallet);
+        elements.addNetworkBtn.addEventListener('click', addTempoToWallet);
+        
+        // Token scanner events
+        elements.scanTokenBtn.addEventListener('click', scanToken);
+        elements.tokenAddressInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') scanToken();
+        });
+        elements.addToPortfolioBtn.addEventListener('click', () => {
+          const address = elements.tokenAddressInput.value.trim();
+          if (validateAddress(address)) {
+            // Create a token object from scanned data
+            const tokenData = {
+              address,
+              name: 'Scanned Token',
+              symbol: 'TKN',
+              decimals: 18,
+              balance: '0',
+              logo: `https://ui-avatars.com/api/?name=TKN&background=random&color=fff&size=128`
+            };
+            addTokenToPortfolio(tokenData);
+          }
+        });
+        
+        // Portfolio events
+        elements.clearPortfolioBtn.addEventListener('click', clearPortfolio);
+        elements.refreshBalancesBtn.addEventListener('click', refreshAllBalances);
+        elements.toggleAutoRefreshBtn.addEventListener('click', toggleAutoRefresh);
+        
+        // Faucet events
+        elements.claimTokensBtn.addEventListener('click', claimTokens);
+        elements.refillFaucetBtn.addEventListener('click', refillFaucet);
+        elements.withdrawFaucetBtn.addEventListener('click', withdrawFaucet);
+        
+        // UI events
+        elements.darkModeToggle.addEventListener('click', toggleDarkMode);
+        elements.closeAlertBtn.addEventListener('click', hideAlert);
+        
+        // MetaMask events
+        if (typeof window.ethereum !== 'undefined') {
+          window.ethereum.on('accountsChanged', (accounts) => {
+            if (accounts.length > 0) {
+              state.account = accounts[0];
+              updateWalletUI();
+              updateWalletBalance();
+              initializeFaucet();
+            } else {
+              disconnectWallet();
+            }
+          });
+          
+          window.ethereum.on('chainChanged', () => {
+            window.location.reload();
+          });
+        }
+      }
+
+      // ============================================
+      // Initialize App
+      // ============================================
+      
+      async function initializeApp() {
+        console.log('Initializing Tempo Dashboard...');
+        
+        // Load saved data
+        loadDarkMode();
+        loadLogoCache();
+        
+        // Initialize event listeners
+        initializeEventListeners();
+        
+        // Check if wallet is already connected
+        if (typeof window.ethereum !== 'undefined' && window.ethereum.selectedAddress) {
+          await connectWallet();
+        }
+        
+        // Show welcome message
+        setTimeout(() => {
+          showAlert('Welcome to Tempo Dashboard! Connect your wallet to get started.', 'info');
+        }, 1000);
+        
+        console.log('Tempo Dashboard initialized successfully!');
+      }
+
+      // ============================================
+      // Expose Functions to Global Scope for HTML onclick
+      // ============================================
+      
+      window.refreshTokenBalance = refreshTokenBalance;
+      window.toggleFavorite = toggleFavorite;
+      window.removeToken = removeToken;
+      window.refreshAllBalances = refreshAllBalances;
+
+      // ============================================
+      // Start the Application
+      // ============================================
+      
+      document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+  </body>
+</html>
